@@ -1567,20 +1567,6 @@ QString getBetterLinkPreview(const QString &url) {
 
 	auto host = parsed.host().toLower();
 
-	const auto &ivRules = settings.dynamicInstantView();
-	if (!ivRules.empty()) {
-		for (const auto &[match, rhash] : ivRules) {
-			if (match.startsWith(u"*."_q)) {
-				auto suffix = match.mid(1);
-				if (host == match.mid(2) || host.endsWith(suffix)) {
-					return QString("https://t.me/iv?rhash=%1&url=%2").arg(rhash, url);
-				}
-			} else if (host == match) {
-				return QString("https://t.me/iv?rhash=%1&url=%2").arg(rhash, url);
-			}
-		}
-	}
-
 	if (!settings.improveLinkPreviews()) {
 		return url;
 	}
