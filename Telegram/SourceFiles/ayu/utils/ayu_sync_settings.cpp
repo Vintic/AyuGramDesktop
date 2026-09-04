@@ -102,7 +102,7 @@ void Start(Main::Session* session) {
 	rpl::merge(
 		session->data().newItemAdded(),
 		session->data().itemDataChanges()
-	) | rpl::start_with_next([=](not_null<HistoryItem*> item) {
+	) | rpl::on_next([=](not_null<HistoryItem*> item) {
 		if (item->history()->peer->isSelf()) {
 			if (item->originalText().text.contains("#ayugram_settings")) {
 				ParseMessage(item->originalText().text);
