@@ -232,8 +232,9 @@ WebpageProcessor::WebpageProcessor(
 		_data = _resolver->lookup(link).value_or(nullptr);
 		if (_data) {
 			_draft.id = _data->id;
-			_draft.url = _data->url;
+			_draft.isInstantView = !getInstantViewLink(link).isEmpty();
 			_draft.previewChanged = (getBetterLinkPreview(link) != link);
+			_draft.url = (_draft.previewChanged || _draft.isInstantView) ? link : _data->url;
 			updateFromData();
 		} else {
 			_links = QStringList();
@@ -396,8 +397,9 @@ void WebpageProcessor::checkPreview() {
 	if (page) {
 		_data = page;
 		_draft.id = _data->id;
-		_draft.url = _data->url;
+		_draft.isInstantView = !getInstantViewLink(chosen).isEmpty();
 		_draft.previewChanged = (getBetterLinkPreview(chosen) != chosen);
+		_draft.url = (_draft.previewChanged || _draft.isInstantView) ? chosen : _data->url;
 	} else {
 		_data = nullptr;
 		_draft = {};

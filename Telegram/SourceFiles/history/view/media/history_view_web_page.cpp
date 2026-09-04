@@ -7,6 +7,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "history/view/media/history_view_web_page.h"
 
+#include "ayu/utils/telegram_helpers.h"
 #include "base/unixtime.h"
 #include "core/application.h"
 #include "countries/countries_instance.h"
@@ -143,6 +144,11 @@ constexpr auto kSponsoredUserpicLines = 2;
 				const auto hash = ExtractHash(webpage, text);
 				Core::App().iv().show(controller, iv, hash);
 				return;
+			}
+			
+			const auto customIv = getInstantViewLink(webpage->url);
+			if (!customIv.isEmpty()) {
+				HiddenUrlClickHandler::Open(customIv, context.other);
 			} else {
 				HiddenUrlClickHandler::Open(webpage->url, context.other);
 			}
@@ -198,6 +204,8 @@ constexpr auto kSponsoredUserpicLines = 2;
 [[nodiscard]] TextWithEntities PageToPhrase(not_null<WebPageData*> page) {
 	const auto type = page->type;
 	const auto text = tr::upper(page->iv
+		? tr::lng_view_button_iv(tr::now)
+		: !getInstantViewLink(page->url).isEmpty()
 		? tr::lng_view_button_iv(tr::now)
 		: page->uniqueGift
 		? tr::lng_view_button_collectible(tr::now)
@@ -255,7 +263,7 @@ constexpr auto kSponsoredUserpicLines = 2;
 			? tr::lng_auction_bar_view(tr::now)
 			: tr::lng_auction_preview_join(tr::now))
 		: QString());
-	if (page->iv) {
+	if (page->iv || !getInstantViewLink(page->url).isEmpty()) {
 		return Ui::Text::IconEmoji(&st::historyIvIcon).append(text);
 	}
 	return { text };
@@ -264,6 +272,7 @@ constexpr auto kSponsoredUserpicLines = 2;
 [[nodiscard]] bool HasButton(not_null<WebPageData*> webpage) {
 	const auto type = webpage->type;
 	return webpage->iv
+		|| !getInstantViewLink(webpage->url).isEmpty()
 		|| webpage->uniqueGift
 		|| (type == WebPageType::Message)
 		|| (type == WebPageType::Group)

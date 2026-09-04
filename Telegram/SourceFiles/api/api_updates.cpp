@@ -11,6 +11,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "api/api_user_names.h"
 #include "api/api_chat_participants.h"
 #include "api/api_global_privacy.h"
+#include "ayu/utils/telegram_helpers.h"
 #include "api/api_ringtones.h"
 #include "api/api_text_entities.h"
 #include "api/api_user_privacy.h"
@@ -1307,14 +1308,19 @@ void Updates::applyUpdateNoPtsCheck(const MTPUpdate &update) {
 			if (_session->data().updateExistingMessage(data)) { // already in blocks
 				LOG(("Skipping message, because it is already in blocks!"));
 				needToAdd = false;
+				if (const auto item = _session->data().message(PeerFromMessage(d.vmessage()), IdFromMessage(d.vmessage()))) {
+					ProcessAutoEditorsAfterSend(item);
+				}
 			}
 			ProcessScheduledMessageWithElapsedTime(_session, needToAdd, data);
 		}
 		if (needToAdd) {
-			_session->data().addNewMessage(
+			if (const auto item = _session->data().addNewMessage(
 				d.vmessage(),
 				MessageFlags(),
-				NewMessageType::Unread);
+				NewMessageType::Unread)) {
+				ProcessAutoEditorsAfterSend(item);
+			}
 		}
 	} break;
 
@@ -1403,14 +1409,19 @@ void Updates::applyUpdateNoPtsCheck(const MTPUpdate &update) {
 			if (_session->data().updateExistingMessage(data)) { // already in blocks
 				LOG(("Skipping message, because it is already in blocks!"));
 				needToAdd = false;
+				if (const auto item = _session->data().message(PeerFromMessage(d.vmessage()), IdFromMessage(d.vmessage()))) {
+					ProcessAutoEditorsAfterSend(item);
+				}
 			}
 			ProcessScheduledMessageWithElapsedTime(_session, needToAdd, data);
 		}
 		if (needToAdd) {
-			_session->data().addNewMessage(
+			if (const auto item = _session->data().addNewMessage(
 				d.vmessage(),
 				MessageFlags(),
-				NewMessageType::Unread);
+				NewMessageType::Unread)) {
+				ProcessAutoEditorsAfterSend(item);
+			}
 		}
 	} break;
 

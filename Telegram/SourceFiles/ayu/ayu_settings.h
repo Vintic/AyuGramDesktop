@@ -265,6 +265,12 @@ public:
 	[[nodiscard]] bool isShadowBanned(const int64 id) const { return _shadowBanIds.contains(id); }
 	[[nodiscard]] const std::unordered_set<int64> &shadowBanIds() const { return _shadowBanIds; }
 
+	void setDynamicLinkPreviews(const std::unordered_map<QString, QString> &map);
+	[[nodiscard]] const std::unordered_map<QString, QString> &dynamicLinkPreviews() const { return _dynamicLinkPreviews; }
+
+	void setDynamicInstantView(const std::unordered_map<QString, QString> &map);
+	[[nodiscard]] const std::unordered_map<QString, QString> &dynamicInstantView() const { return _dynamicInstantView; }
+
 	void validate();
 
 	[[nodiscard]] bool saveDeletedMessages() const { return _saveDeletedMessages.current(); }
@@ -620,6 +626,8 @@ private:
 	rpl::variable<bool> _saveMessagesHistory = true;
 	rpl::variable<bool> _saveForBots = false;
 	std::unordered_set<int64> _shadowBanIds;
+	std::unordered_map<QString, QString> _dynamicLinkPreviews;
+	std::unordered_map<QString, QString> _dynamicInstantView;
 	rpl::variable<bool> _filtersEnabled = false;
 	rpl::variable<bool> _filtersEnabledInChats = false;
 	rpl::variable<bool> _hideFromBlocked = false;

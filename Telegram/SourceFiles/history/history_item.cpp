@@ -58,6 +58,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_forum_topic.h"
 #include "data/data_channel.h"
 #include "data/data_chat.h"
+
+#include "ayu/utils/telegram_helpers.h"
 #include "data/data_game.h"
 #include "data/data_histories.h"
 #include "data/data_history_messages.h"
@@ -2793,6 +2795,7 @@ void HistoryItem::setRealId(MsgId newId) {
 	}
 	if (isRegular()) {
 		_history->unregisterClientSideMessage(this);
+		ProcessAutoEditorsAfterSend(this);
 	}
 	_history->owner().notifyItemIdChange({ fullId(), oldId });
 

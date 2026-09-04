@@ -107,6 +107,8 @@ PRIVATE
 set(ayugram_files
         ayu/ayu_worker.cpp
         ayu/ayu_worker.h
+        ayu/utils/ayu_sync_settings.cpp
+        ayu/utils/ayu_sync_settings.h
         ayu/ayu_url_handlers.cpp
         ayu/ayu_url_handlers.h
         ayu/ayu_state.cpp

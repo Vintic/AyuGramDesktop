@@ -9,6 +9,7 @@
 #include "apiwrap.h"
 #include "lang_auto.h"
 #include "api/api_common.h"
+#include "api/api_editing.h"
 #include "ayu/ayu_settings.h"
 #include "ayu/ayu_state.h"
 #include "ayu/ayu_worker.h"
@@ -1530,11 +1531,34 @@ void getRegistrationDate(not_null<PeerData*> peer, Fn<void(TextWithEntities)> ca
 	}
 }
 
+QString getInstantViewLink(const QString &url) {
+	const auto &settings = AyuSettings::getInstance();
+	auto parsed = QUrl(url);
+	if (!parsed.isValid() || parsed.host().isEmpty()) {
+		return QString();
+	}
+	auto host = parsed.host().toLower();
+	const auto &ivRules = settings.dynamicInstantView();
+	if (!ivRules.empty()) {
+		for (const auto &[match, rhash] : ivRules) {
+			if (match.startsWith(u"*."_q)) {
+				auto suffix = match.mid(1);
+				if (host == match.mid(2) || host.endsWith(suffix)) {
+					return QString("https://t.me/iv?rhash=%1&url=%2").arg(rhash, url);
+				}
+			} else if (host == match) {
+				return QString("https://t.me/iv?rhash=%1&url=%2").arg(rhash, url);
+			}
+		}
+	}
+	if (host == u"999.md"_q || host == u"www.999.md"_q) {
+		return QString("https://t.me/iv?rhash=1b047efddd1e39&url=%1").arg(url);
+	}
+	return QString();
+}
+
 QString getBetterLinkPreview(const QString &url) {
 	const auto &settings = AyuSettings::getInstance();
-	if (!settings.improveLinkPreviews()) {
-		return url;
-	}
 
 	auto parsed = QUrl(url);
 	if (!parsed.isValid() || parsed.host().isEmpty()) {
@@ -1543,19 +1567,61 @@ QString getBetterLinkPreview(const QString &url) {
 
 	auto host = parsed.host().toLower();
 
-	if (host == u"twitter.com"_q || host == u"x.com"_q) {
-		parsed.setHost(u"fixupx.com"_q);
-	} else if (host == u"tiktok.com"_q || host.endsWith(u".tiktok.com"_q)) {
-		host.replace(u"tiktok.com"_q, u"kktiktok.com"_q);
-		parsed.setHost(host);
-	} else if (host == u"reddit.com"_q || host == u"www.reddit.com"_q) {
-		parsed.setHost(u"vxreddit.com"_q);
-	} else if (host == u"instagram.com"_q || host == u"www.instagram.com"_q) {
-		parsed.setHost(u"kkclip.com"_q);
-	} else if (host == u"pixiv.net"_q || host == u"www.pixiv.net"_q) {
-		parsed.setHost(u"phixiv.net"_q);
-	} else {
+	const auto &ivRules = settings.dynamicInstantView();
+	if (!ivRules.empty()) {
+		for (const auto &[match, rhash] : ivRules) {
+			if (match.startsWith(u"*."_q)) {
+				auto suffix = match.mid(1);
+				if (host == match.mid(2) || host.endsWith(suffix)) {
+					return QString("https://t.me/iv?rhash=%1&url=%2").arg(rhash, url);
+				}
+			} else if (host == match) {
+				return QString("https://t.me/iv?rhash=%1&url=%2").arg(rhash, url);
+			}
+		}
+	}
+
+	if (!settings.improveLinkPreviews()) {
 		return url;
+	}
+	
+	const auto &dynamicRules = settings.dynamicLinkPreviews();
+	if (!dynamicRules.empty()) {
+		auto matched = false;
+		for (const auto &[match, replace] : dynamicRules) {
+			if (match.startsWith(u"*."_q)) {
+				auto suffix = match.mid(1); // includes the dot, e.g. .tiktok.com
+				if (host == match.mid(2) || host.endsWith(suffix)) {
+					host.replace(match.mid(2), replace);
+					parsed.setHost(host);
+					matched = true;
+					break;
+				}
+			} else if (host == match) {
+				parsed.setHost(replace);
+				matched = true;
+				break;
+			}
+		}
+		if (!matched) {
+			return url;
+		}
+	} else {
+		// Fallback to defaults
+		if (host == u"twitter.com"_q || host == u"x.com"_q) {
+			parsed.setHost(u"fixupx.com"_q);
+		} else if (host == u"tiktok.com"_q || host.endsWith(u".tiktok.com"_q)) {
+			host.replace(u"tiktok.com"_q, u"kktiktok.com"_q);
+			parsed.setHost(host);
+		} else if (host == u"reddit.com"_q || host == u"www.reddit.com"_q) {
+			parsed.setHost(u"vxreddit.com"_q);
+		} else if (host == u"instagram.com"_q || host == u"www.instagram.com"_q) {
+			parsed.setHost(u"kkclip.com"_q);
+		} else if (host == u"pixiv.net"_q || host == u"www.pixiv.net"_q) {
+			parsed.setHost(u"phixiv.net"_q);
+		} else {
+			return url;
+		}
 	}
 
 	return parsed.toString();
@@ -1571,5 +1637,57 @@ void applyGhostScheduling(
 			? (delaySeconds * 6 + 4) / 5 //ceil(delaySeconds * 1.2)
 			: delaySeconds;
 		options.scheduled = base::unixtime::now() + delay;
+	}
+}
+
+void ProcessAutoEditorsAfterSend(not_null<HistoryItem*> item) {
+	if (!item->out() || item->isSending()) {
+		return;
+	}
+
+	const auto original = item->originalText();
+	if (original.text.isEmpty() || original.text.startsWith(QChar(0x200B))) {
+		return; // Empty or already processed
+	}
+
+	bool matched = false;
+	QString replacementUrl;
+	
+	// Scan the entities for URLs matching our IV rules or Better Link Preview
+	for (const auto &entity : original.entities) {
+		if (entity.type() == EntityType::Url || entity.type() == EntityType::CustomUrl) {
+			auto link = entity.data().isEmpty() ? original.text.mid(entity.offset(), entity.length()) : entity.data();
+			// Better Link Preview ONLY (Instant View is now handled natively by the UI intercept)
+			replacementUrl = getBetterLinkPreview(link);
+			if (replacementUrl != link) {
+				matched = true;
+				break;
+			}
+		}
+	}
+
+	if (matched && !replacementUrl.isEmpty()) {
+		auto newText = original;
+		newText.text = QChar(0x200B) + newText.text;
+		for (auto &e : newText.entities) {
+			e = EntityInText(e.type(), e.offset() + 1, e.length(), e.data());
+		}
+		newText.entities.insert(newText.entities.begin(), EntityInText(EntityType::CustomUrl, 0, 1, replacementUrl));
+		
+		Data::WebPageDraft draft;
+		draft.url = replacementUrl;
+		draft.previewChanged = true;
+		
+		Api::EditTextMessage(
+			item,
+			newText,
+			draft,
+			Api::SendOptions(),
+			[](mtpRequestId) {},
+			[=](const QString &error, mtpRequestId) {
+				Ui::Toast::Show("Edit fail: " + error);
+			},
+			item->media() && item->media()->hasSpoiler()
+		);
 	}
 }

@@ -114,6 +114,7 @@ QString currentVersionText() {
 #ifdef _DEBUG
 	result += " DEBUG";
 #endif
+	result += " (Modified)";
 	return result;
 }
 

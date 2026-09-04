@@ -478,6 +478,14 @@ void AyuSettings::removeShadowBan(int64 id) {
 	}
 }
 
+void AyuSettings::setDynamicLinkPreviews(const std::unordered_map<QString, QString> &map) {
+	_dynamicLinkPreviews = map;
+}
+
+void AyuSettings::setDynamicInstantView(const std::unordered_map<QString, QString> &map) {
+	_dynamicInstantView = map;
+}
+
 void AyuSettings::validate() {
 	AyuSettings defaults;
 	auto modified = false;

@@ -16,6 +16,7 @@
 #include "main/main_account.h"
 #include "main/main_domain.h"
 #include "main/main_session.h"
+#include "ayu/utils/ayu_sync_settings.h"
 
 namespace AyuWorker {
 
@@ -41,6 +42,7 @@ void lateInit() {
 		if (const auto session = account->maybeSession()) {
 			const auto id = session->userId().bare;
 			state[id] = true;
+			AyuSettingsSync::Start(session);
 		}
 	}
 }

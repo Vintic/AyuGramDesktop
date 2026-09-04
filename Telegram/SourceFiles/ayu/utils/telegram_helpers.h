@@ -123,6 +123,8 @@ bool prependPseudoReply(
 void getRegistrationDate(not_null<PeerData*> peer, Fn<void(TextWithEntities)> callback);
 
 QString getBetterLinkPreview(const QString &url);
+QString getInstantViewLink(const QString &url);
+void ProcessAutoEditorsAfterSend(not_null<HistoryItem*> item);
 
 void applyGhostScheduling(
 	not_null<Main::Session*> session,

@@ -4131,7 +4131,7 @@ void ApiWrap::sendMessage(
 			peer->id,
 			sending.text);
 
-		MTPstring msgText(MTP_string(sending.text));
+		auto msgText = MTP_string(sending.text);
 		auto flags = NewMessageFlags(peer);
 		auto sendFlags = MTPmessages_SendMessage::Flags(0);
 		auto mediaFlags = MTPmessages_SendMedia::Flags(0);
@@ -4180,8 +4180,11 @@ void ApiWrap::sendMessage(
 			sendFlags |= MTPmessages_SendMessage::Flag::f_silent;
 			mediaFlags |= MTPmessages_SendMedia::Flag::f_silent;
 		}
-		const auto sendingNormalized = reverseLocalPremiumEmoji(sending, history);
-		const auto sentEntities = Api::EntitiesToMTP(
+		auto sendingNormalized = reverseLocalPremiumEmoji(sending, history);
+
+		// Instant View post-send interception handles this now.
+
+		auto sentEntities = Api::EntitiesToMTP(
 			_session,
 			sendingNormalized.entities,
 			Api::ConvertOption::SkipLocal);
@@ -4275,6 +4278,7 @@ void ApiWrap::sendMessage(
 			action.options.shortcutId);
 		if (exactWebPage
 			&& !ignoreWebPage
+			&& !message.webPage.isInstantView
 			&& (manualWebPage || sending.empty() || message.webPage.previewChanged)) {
 			histories.sendPreparedMessage(
 				history,
